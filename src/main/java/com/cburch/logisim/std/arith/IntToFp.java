@@ -92,10 +92,12 @@ public class IntToFp extends InstanceFactory {
     final var a_val = extend(dataWidthIn.getWidth(), a.toLongValue(), unsigned);
 
     final var out_val = a.isFullyDefined() ? a_val.doubleValue() : Double.NaN;
-    final var out =
-        dataWidthOut.getWidth() == 64
-            ? Value.createKnown(out_val)
-            : Value.createKnown((float) out_val);
+    final var out = switch (dataWidthOut.getWidth()) {
+      case 8  -> Value.createKnown(8, Long.parseLong(Value.doubleToMiniFloat(out_val,7),2));
+      case 32 -> Value.createKnown((float) out_val);
+      case 64 -> Value.createKnown(out_val);
+      default -> Value.createKnown((float) out_val);
+    };
 
     // propagate them
     final var delay = (dataWidthIn.getWidth() + 2) * PER_DELAY;
