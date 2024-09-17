@@ -533,6 +533,84 @@ public class Value {
     return value;
   }
 
+  private static String fractionToBinary (double value) {
+    StringBuilder binary = new StringBuilder();
+    while (value != 0) {
+        value *= 2;
+
+        if (value >= 1) {
+            binary.append('1');
+            value -= 1;
+        } else {
+            binary.append('0');
+        }
+    }
+    return binary.toString();
+  }
+
+  public static String doubleToMiniFloat (double value, int bias) {
+    final var signal = value < 0 ? "1" : "0";
+
+    if (Double.isInfinite(value)) {
+      return signal + "1111000";
+    }
+
+    if (Double.isNaN(value)) {
+      return "01111001";
+    }
+
+    var abs_value = Math.abs(value);
+
+    String int_str = Integer.toBinaryString((int) abs_value);
+    String frac_str = fractionToBinary(abs_value - (int) abs_value);
+    String mant_str = (int_str + frac_str) + "000";
+
+    String exp_str;
+    int mant_start_index;
+    int offset = (int_str.length() - 1) - mant_str.indexOf('1');
+    
+    if (abs_value <= Math.pow(2, - bias + 1)) {
+      exp_str = "0";
+      mant_start_index = Integer.parseInt(mant_str, 2) == 0 ? 0 : bias;
+    } else {
+      exp_str = Integer.toBinaryString(offset + bias);
+      mant_start_index = int_str.length() - offset;          
+    }
+
+    exp_str = String.format("%4s",exp_str).replaceAll(" ","0");
+    mant_str = mant_str.substring(mant_start_index, mant_start_index + 3);
+    
+    String result = signal + exp_str + mant_str;
+
+    return result;
+  }
+
+  public float toMiniFloatValue() {
+    final int bias = 7;
+    int s = ((value >> 7) == 0) ? 1 : -1; 
+    int e = (int) ((value >> 3) & 0xf);
+
+    int m;
+    switch (e) {
+      case 15:
+        m = (int) (value & 0x7);
+        return switch (m) {
+          case 0 ->
+            s * Float.POSITIVE_INFINITY;
+          default ->
+            Float.NaN;
+        };
+      case 0:
+        m = (int) (value & 0x7) << 1;
+        break;
+      default:
+        m = (int) (value & 0x7) | 0x8;
+        break;
+    };
+
+    return (float) (s * Math.pow(2, e - bias) * (m / Math.pow(2, 3)));
+  }
+
   public float toFloatValue() {
     if (error != 0 || unknown != 0 || width != 32) return Float.NaN;
     return Float.intBitsToFloat((int) value);

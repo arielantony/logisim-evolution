@@ -85,13 +85,20 @@ public class FpNegator extends InstanceFactory {
 
     // compute outputs
     final var a = state.getPortValue(IN);
-    final var a_val = dataWidth.getWidth() == 64 ? a.toDoubleValue() : a.toFloatValue();
+    final var a_val = switch(dataWidth.getWidth()) {
+      case 8 -> a.toMiniFloatValue();
+      case 32 -> a.toFloatValue();
+      case 64 -> a.toDoubleValue();
+      default -> a.toFloatValue();
+    };
 
     final var out_val = a_val * -1;
-    final var out =
-        dataWidth.getWidth() == 64
-            ? Value.createKnown(out_val)
-            : Value.createKnown((float) out_val);
+    final var out = switch (dataWidth.getWidth()) {
+      case 8  -> Value.createKnown(8, Long.parseLong(Value.doubleToMiniFloat(out_val,7),2));
+      case 32 -> Value.createKnown((float) out_val);
+      case 64 -> Value.createKnown(out_val);
+      default -> Value.createKnown((float) out_val);
+    };
 
     // propagate them
     final var delay = (dataWidth.getWidth() + 2) * PER_DELAY;
